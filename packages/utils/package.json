@@ -1,0 +1,21 @@
+{
+  "name": "@meme-coin/utils",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@meme-coin/config": "workspace:*",
+    "@meme-coin/types": "workspace:*",
+    "pino": "^9.6.0"
+  },
+  "devDependencies": {
+    "@types/pino": "^7.0.4",
+    "pino-pretty": "^13.0.0",
+    "typescript": "^5.7.3"
+  }
+}

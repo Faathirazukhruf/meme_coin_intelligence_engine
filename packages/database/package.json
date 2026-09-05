@@ -1,0 +1,25 @@
+{
+  "name": "@meme-coin/database",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate --schema=../../prisma/schema.prisma",
+    "db:push": "prisma db push --schema=../../prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema=../../prisma/schema.prisma",
+    "db:studio": "prisma studio --schema=../../prisma/schema.prisma"
+  },
+  "dependencies": {
+    "@meme-coin/config": "workspace:*",
+    "@meme-coin/types": "workspace:*",
+    "@meme-coin/utils": "workspace:*",
+    "@prisma/client": "^6.4.1"
+  },
+  "devDependencies": {
+    "prisma": "^6.4.1",
+    "typescript": "^5.7.3"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@meme-coin/types": ["./packages/types/src"],
+      "@meme-coin/config": ["./packages/config/src"],
+      "@meme-coin/utils": ["./packages/utils/src"],
+      "@meme-coin/math": ["./packages/math/src"],
+      "@meme-coin/core": ["./packages/core/src"],
+      "@meme-coin/database": ["./packages/database/src"],
+      "@meme-coin/providers": ["./packages/providers/src"]
+    }
+  },
+  "exclude": ["node_modules", "dist", ".next", "coverage"]
+}

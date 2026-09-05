@@ -1,0 +1,484 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// -------------------------------------------------------------
+// Core Token & Pool Entities
+// -------------------------------------------------------------
+
+model Token {
+  id               String    @id @default(uuid())
+  chainId          String    @map("chain_id")
+  address          String    @unique
+  symbol           String
+  name             String
+  decimals         Int       @default(9)
+  creatorAddress   String?   @map("creator_address")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  firstSeenAt      DateTime  @default(now()) @map("first_seen_at")
+  firstLiquidityAt DateTime? @map("first_liquidity_at")
+  firstTradeAt     DateTime? @map("first_trade_at")
+  status           String    @default("active") // active, graduated, dead, vetoed
+  createdSource    String?   @map("created_source")
+  metadata         Json?
+
+  pools            Pool[]
+  trades           Trade[]
+  liquidityEvents  LiquidityEvent[]
+  events           Event[]
+  marketSnapshots  MarketSnapshot[]
+  holderSnapshots  HolderSnapshot[]
+  socialEvents     SocialEvent[]
+  socialSnapshots  SocialSnapshot[]
+  tokenNarratives  TokenNarrative[]
+  featureSnapshots FeatureSnapshot[]
+  scoreSnapshots   ScoreSnapshot[]
+  signals          Signal[]
+  outcomes         Outcome[]
+
+  @@index([chainId, address])
+  @@index([symbol])
+  @@index([createdAt])
+  @@map("tokens")
+}
+
+model Pool {
+  id               String    @id @default(uuid())
+  tokenId          String    @map("token_id")
+  chainId          String    @map("chain_id")
+  dex              String
+  protocol         String
+  poolAddress      String    @unique @map("pool_address")
+  baseToken        String    @map("base_token")
+  quoteToken       String    @map("quote_token")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  firstLiquidityAt DateTime? @map("first_liquidity_at")
+  status           String    @default("active")
+  metadata         Json?
+
+  token            Token     @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  trades           Trade[]
+  liquidityEvents  LiquidityEvent[]
+  marketSnapshots  MarketSnapshot[]
+
+  @@index([tokenId])
+  @@index([chainId, poolAddress])
+  @@map("pools")
+}
+
+// -------------------------------------------------------------
+// Market Trades & Liquidity Events (Idempotent & Deduplicated)
+// -------------------------------------------------------------
+
+model Trade {
+  id                    String   @id @default(uuid())
+  tokenId               String   @map("token_id")
+  poolId                String   @map("pool_id")
+  chainId               String   @map("chain_id")
+  eventTime             DateTime @map("event_time")
+  ingestedAt            DateTime @default(now()) @map("ingested_at")
+  transactionHash       String   @map("transaction_hash")
+  eventIndex            Int      @default(0) @map("event_index")
+  instructionIndex      Int?     @map("instruction_index")
+  innerInstructionIndex Int?     @map("inner_instruction_index")
+  side                  String   // BUY, SELL
+  price                 Float
+  baseAmount            Float    @map("base_amount")
+  quoteAmount           Float    @map("quote_amount")
+  buyer                 String?
+  seller                String?
+  liquidityBefore       Float?   @map("liquidity_before")
+  liquidityAfter        Float?   @map("liquidity_after")
+  rawDataId             String?  @map("raw_data_id")
+  parserVersion         String   @default("parser_v1") @map("parser_version")
+
+  token                 Token    @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  pool                  Pool     @relation(fields: [poolId], references: [id], onDelete: Cascade)
+
+  @@unique([chainId, transactionHash, eventIndex])
+  @@index([tokenId, eventTime])
+  @@index([poolId, eventTime])
+  @@index([eventTime])
+  @@map("trades")
+}
+
+model LiquidityEvent {
+  id              String   @id @default(uuid())
+  tokenId         String   @map("token_id")
+  poolId          String   @map("pool_id")
+  eventType       String   @map("event_type") // ADD, REMOVE, MIGRATE
+  eventTime       DateTime @map("event_time")
+  amount          Float
+  liquidityBefore Float?   @map("liquidity_before")
+  liquidityAfter  Float?   @map("liquidity_after")
+  transactionHash String   @map("transaction_hash")
+  rawDataId       String?  @map("raw_data_id")
+  parserVersion   String   @default("parser_v1") @map("parser_version")
+
+  token           Token    @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  pool            Pool     @relation(fields: [poolId], references: [id], onDelete: Cascade)
+
+  @@index([tokenId, eventTime])
+  @@index([poolId, eventTime])
+  @@map("liquidity_events")
+}
+
+// -------------------------------------------------------------
+// Generic Canonical Event Ledger & Raw Data
+// -------------------------------------------------------------
+
+model Event {
+  id              String    @id @default(uuid())
+  tokenId         String?   @map("token_id")
+  eventType       String    @map("event_type")
+  source          String
+  eventTime       DateTime  @map("event_time")
+  ingestedAt      DateTime  @default(now()) @map("ingested_at")
+  processedAt     DateTime? @map("processed_at")
+  slot            BigInt?
+  transactionHash String?   @map("transaction_hash")
+  eventIndex      Int?      @map("event_index")
+  walletAddress   String?   @map("wallet_address")
+  amount          Float?
+  price           Float?
+  liquidity       Float?
+  rawDataId       String?   @map("raw_data_id")
+  payload         Json?
+
+  token           Token?    @relation(fields: [tokenId], references: [id], onDelete: SetNull)
+
+  @@index([tokenId, eventTime])
+  @@index([eventType, eventTime])
+  @@index([transactionHash])
+  @@map("events")
+}
+
+model RawData {
+  id          String   @id @default(uuid())
+  source      String
+  endpoint    String
+  receivedAt  DateTime @default(now()) @map("received_at")
+  payload     String   @db.Text
+  payloadHash String   @unique @map("payload_hash")
+
+  @@index([source, receivedAt])
+  @@map("raw_data")
+}
+
+// -------------------------------------------------------------
+// Wallets & Relationship Graph
+// -------------------------------------------------------------
+
+model Wallet {
+  id                       String   @id @default(uuid())
+  chainId                  String   @map("chain_id")
+  address                  String   @unique
+  firstSeenAt              DateTime @default(now()) @map("first_seen_at")
+  lastSeenAt               DateTime @default(now()) @map("last_seen_at")
+  walletType               String?  @map("wallet_type") // CREATOR, SNIPER, INSIDER, WHALE, RETAIL
+  classificationConfidence Float?   @map("classification_confidence")
+
+  @@index([chainId, address])
+  @@map("wallets")
+}
+
+model WalletRelationship {
+  id               String   @id @default(uuid())
+  walletA          String   @map("wallet_a")
+  walletB          String   @map("wallet_b")
+  relationshipType String   @map("relationship_type") // FUNDED_BY, TRANSFERRED_TO, SAME_CLUSTER, RELATED_TO_CREATOR
+  detectedAt       DateTime @default(now()) @map("detected_at")
+  confidence       Float
+  evidence         Json
+
+  @@index([walletA])
+  @@index([walletB])
+  @@index([relationshipType])
+  @@map("wallet_relationships")
+}
+
+// -------------------------------------------------------------
+// Snapshots (Immutable Time-Series)
+// -------------------------------------------------------------
+
+model MarketSnapshot {
+  id          String   @id @default(uuid())
+  tokenId     String   @map("token_id")
+  poolId      String?  @map("pool_id")
+  timestamp   DateTime
+  price       Float
+  marketCap   Float    @map("market_cap")
+  fdv         Float
+  liquidity   Float
+  volume1m    Float    @map("volume_1m")
+  volume5m    Float    @map("volume_5m")
+  volume15m   Float    @map("volume_15m")
+  buyVolume   Float    @map("buy_volume")
+  sellVolume  Float    @map("sell_volume")
+  buyCount    Int      @map("buy_count")
+  sellCount   Int      @map("sell_count")
+  txCount     Int      @map("tx_count")
+  dataQuality Float    @default(100) @map("data_quality")
+
+  token       Token    @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  pool        Pool?    @relation(fields: [poolId], references: [id], onDelete: SetNull)
+
+  @@index([tokenId, timestamp])
+  @@map("market_snapshots")
+}
+
+model HolderSnapshot {
+  id                 String   @id @default(uuid())
+  tokenId            String   @map("token_id")
+  timestamp          DateTime
+  holderCount        Int      @map("holder_count")
+  top10Concentration Float    @map("top10_concentration")
+  top20Concentration Float    @map("top20_concentration")
+  top50Concentration Float    @map("top50_concentration")
+  creatorRatio       Float    @map("creator_ratio")
+  dataQuality        Float    @default(100) @map("data_quality")
+
+  token              Token    @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+
+  @@index([tokenId, timestamp])
+  @@map("holder_snapshots")
+}
+
+model SocialEvent {
+  id          String   @id @default(uuid())
+  tokenId     String   @map("token_id")
+  platform    String   // X, TELEGRAM
+  authorId    String   @map("author_id")
+  eventType   String   @map("event_type")
+  contentHash String   @map("content_hash")
+  createdAt   DateTime @map("created_at")
+  ingestedAt  DateTime @default(now()) @map("ingested_at")
+  engagement  Int      @default(0)
+  followers   Int      @default(0)
+  metadata    Json?
+
+  token       Token    @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+
+  @@index([tokenId, createdAt])
+  @@index([platform, authorId])
+  @@map("social_events")
+}
+
+model SocialSnapshot {
+  id                 String   @id @default(uuid())
+  tokenId            String   @map("token_id")
+  timestamp          DateTime
+  mentionCount       Int      @map("mention_count")
+  uniqueAuthors      Int      @map("unique_authors")
+  engagement         Int
+  authorGrowth       Float    @map("author_growth")
+  mentionVelocity    Float    @map("mention_velocity")
+  engagementVelocity Float    @map("engagement_velocity")
+  dataCompleteness   Float    @default(100) @map("data_completeness")
+
+  token              Token    @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+
+  @@index([tokenId, timestamp])
+  @@map("social_snapshots")
+}
+
+// -------------------------------------------------------------
+// Narratives
+// -------------------------------------------------------------
+
+model Narrative {
+  id              String           @id @default(uuid())
+  name            String           @unique
+  category        String
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  tokenNarratives TokenNarrative[]
+
+  @@map("narratives")
+}
+
+model TokenNarrative {
+  id          String    @id @default(uuid())
+  tokenId     String    @map("token_id")
+  narrativeId String    @map("narrative_id")
+  confidence  Float
+  detectedAt  DateTime  @default(now()) @map("detected_at")
+  method      String
+
+  token       Token     @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  narrative   Narrative @relation(fields: [narrativeId], references: [id], onDelete: Cascade)
+
+  @@unique([tokenId, narrativeId])
+  @@map("token_narratives")
+}
+
+// -------------------------------------------------------------
+// Features, Scores, Signals
+// -------------------------------------------------------------
+
+model FeatureSnapshot {
+  id             String   @id @default(uuid())
+  tokenId        String   @map("token_id")
+  timestamp      DateTime
+  features       Json
+  featureVersion String   @map("feature_version")
+
+  token          Token    @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+
+  @@index([tokenId, timestamp])
+  @@map("feature_snapshots")
+}
+
+model ScoreSnapshot {
+  id               String   @id @default(uuid())
+  tokenId          String   @map("token_id")
+  timestamp        DateTime
+  riskScore        Float    @map("risk_score")
+  marketScore      Float    @map("market_score")
+  liquidityScore   Float    @map("liquidity_score")
+  holderScore      Float    @map("holder_score")
+  walletScore      Float    @map("wallet_score")
+  socialScore      Float    @map("social_score")
+  narrativeScore   Float    @map("narrative_score")
+  opportunityScore Float    @map("opportunity_score")
+  finalScore       Float    @map("final_score")
+  confidenceScore  Float    @map("confidence_score")
+  scoringVersion   String   @map("scoring_version")
+  details          Json?
+
+  token            Token    @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  signals          Signal[]
+
+  @@index([tokenId, timestamp])
+  @@map("score_snapshots")
+}
+
+model Signal {
+  id              String        @id @default(uuid())
+  tokenId         String        @map("token_id")
+  timestamp       DateTime
+  signalType      String        @map("signal_type")
+  scoreSnapshotId String        @map("score_snapshot_id")
+  decision        String        // IGNORE, WATCH, ALERT, HIGH_PRIORITY, PAPER_TRADE_CANDIDATE
+  reason          String
+  status          String        @default("ACTIVE") // ACTIVE, EXPIRED, DISMISSED
+
+  token           Token         @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  scoreSnapshot   ScoreSnapshot @relation(fields: [scoreSnapshotId], references: [id], onDelete: Cascade)
+  outcomes        Outcome[]
+
+  @@index([tokenId, timestamp])
+  @@index([decision, timestamp])
+  @@map("signals")
+}
+
+// -------------------------------------------------------------
+// Outcomes & Forward Tracking
+// -------------------------------------------------------------
+
+model Outcome {
+  id                  String   @id @default(uuid())
+  tokenId             String   @map("token_id")
+  signalId            String?  @map("signal_id")
+  anchorTimestamp     DateTime @map("anchor_timestamp")
+  anchorPrice         Float    @map("anchor_price")
+  price1m             Float?   @map("price_1m")
+  price3m             Float?   @map("price_3m")
+  price5m             Float?   @map("price_5m")
+  price10m            Float?   @map("price_10m")
+  price30m            Float?   @map("price_30m")
+  price1h             Float?   @map("price_1h")
+  price6h             Float?   @map("price_6h")
+  price24h            Float?   @map("price_24h")
+  return1m            Float?   @map("return_1m")
+  return3m            Float?   @map("return_3m")
+  return5m            Float?   @map("return_5m")
+  return10m           Float?   @map("return_10m")
+  return30m           Float?   @map("return_30m")
+  return1h            Float?   @map("return_1h")
+  return6h            Float?   @map("return_6h")
+  return24h           Float?   @map("return_24h")
+  mfe                 Float    @default(0) // Max Favorable Excursion %
+  mae                 Float    @default(0) // Max Adverse Excursion %
+  timeToPeakSec       Int?     @map("time_to_peak_sec")
+  timeToDrawdownSec   Int?     @map("time_to_drawdown_sec")
+  liquidityChangePct  Float?   @map("liquidity_change_pct")
+
+  token               Token    @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  signal              Signal?  @relation(fields: [signalId], references: [id], onDelete: SetNull)
+
+  @@index([tokenId, anchorTimestamp])
+  @@index([signalId])
+  @@map("outcomes")
+}
+
+// -------------------------------------------------------------
+// Backtesting Framework
+// -------------------------------------------------------------
+
+model Backtest {
+  id                 String        @id @default(uuid())
+  name               String
+  description        String?
+  timeRangeStart     DateTime      @map("time_range_start")
+  timeRangeEnd       DateTime      @map("time_range_end")
+  datasetVersion     String        @map("dataset_version")
+  featureVersion     String        @map("feature_version")
+  riskVersion        String        @map("risk_version")
+  opportunityVersion String        @map("opportunity_version")
+  scoringVersion     String        @map("scoring_version")
+  decisionVersion    String        @map("decision_version")
+  strategyVersion    String        @map("strategy_version")
+  codeVersion        String        @map("code_version")
+  capitalAssumptions Json          @map("capital_assumptions")
+  createdAt          DateTime      @default(now()) @map("created_at")
+
+  runs               BacktestRun[]
+
+  @@map("backtests")
+}
+
+model BacktestRun {
+  id            String           @id @default(uuid())
+  backtestId    String           @map("backtest_id")
+  runAt         DateTime         @default(now()) @map("run_at")
+  status        String           @default("COMPLETED")
+  totalSignals  Int              @map("total_signals")
+  winRate       Float            @map("win_rate")
+  profitFactor  Float            @map("profit_factor")
+  averageReturn Float            @map("average_return")
+  maxDrawdown   Float            @map("max_drawdown")
+  metrics       Json
+
+  backtest      Backtest         @relation(fields: [backtestId], references: [id], onDelete: Cascade)
+  signals       BacktestSignal[]
+
+  @@index([backtestId])
+  @@map("backtest_runs")
+}
+
+model BacktestSignal {
+  id              String      @id @default(uuid())
+  backtestRunId   String      @map("backtest_run_id")
+  tokenId         String      @map("token_id")
+  signalId        String?     @map("signal_id")
+  anchorTimestamp DateTime    @map("anchor_timestamp")
+  entryPrice      Float       @map("entry_price")
+  exitPrice       Float?      @map("exit_price")
+  scores          Json
+  decision        String
+  simulatedPnl    Float?      @map("simulated_pnl")
+  returnPct       Float?      @map("return_pct")
+  mfe             Float?
+  mae             Float?
+
+  backtestRun     BacktestRun @relation(fields: [backtestRunId], references: [id], onDelete: Cascade)
+
+  @@index([backtestRunId])
+  @@map("backtest_signals")
+}
