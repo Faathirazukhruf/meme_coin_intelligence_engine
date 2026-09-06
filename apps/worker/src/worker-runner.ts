@@ -2,6 +2,7 @@ import { createLogger } from '@meme-coin/utils';
 import { WorkerHeartbeat } from './heartbeat.js';
 import { IngestionJob } from './jobs/ingestion-job.js';
 import { SnapshotJob } from './jobs/snapshot-job.js';
+import { FeatureJob } from './jobs/feature-job.js';
 
 const logger = createLogger('worker-runner');
 
@@ -9,12 +10,14 @@ export class WorkerRunner {
   private heartbeat: WorkerHeartbeat;
   private ingestionJob: IngestionJob;
   private snapshotJob: SnapshotJob;
+  private featureJob: FeatureJob;
   private isShuttingDown = false;
 
   constructor() {
     this.heartbeat = new WorkerHeartbeat();
     this.ingestionJob = new IngestionJob();
     this.snapshotJob = new SnapshotJob();
+    this.featureJob = new FeatureJob();
   }
 
   async start(): Promise<void> {
@@ -22,6 +25,7 @@ export class WorkerRunner {
     this.heartbeat.start();
     this.ingestionJob.start();
     this.snapshotJob.start();
+    this.featureJob.start();
 
     // Register lifecycle signals for graceful shutdown
     process.on('SIGTERM', () => this.shutdown('SIGTERM'));
@@ -35,6 +39,7 @@ export class WorkerRunner {
     this.isShuttingDown = true;
     logger.info({ signal }, 'Shutting down worker runner gracefully...');
 
+    this.featureJob.stop();
     this.snapshotJob.stop();
     this.ingestionJob.stop();
     this.heartbeat.stop();

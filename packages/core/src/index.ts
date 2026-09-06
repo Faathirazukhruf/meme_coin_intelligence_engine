@@ -8,3 +8,5 @@ export * from './snapshots/market-snapshot-service.js';
 export * from './snapshots/holder-snapshot-service.js';
 export * from './snapshots/social-snapshot-service.js';
 export * from './snapshots/snapshot-orchestrator.js';
+export * from './features/feature-calculator.js';
+export * from './features/feature-engine.js';

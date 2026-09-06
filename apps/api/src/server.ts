@@ -9,6 +9,7 @@ import { systemRoutes } from './routes/api/v1/system.js';
 import { tokenRoutes } from './routes/api/v1/tokens.js';
 import { signalRoutes } from './routes/api/v1/signals.js';
 import { snapshotRoutes } from './routes/api/v1/snapshots.js';
+import { featureRoutes } from './routes/api/v1/features.js';
 
 export async function buildServer(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -55,6 +56,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(tokenRoutes, { prefix: '/api/v1/tokens' });
   await app.register(signalRoutes, { prefix: '/api/v1/signals' });
   await app.register(snapshotRoutes, { prefix: '/api/v1/snapshots' });
+  await app.register(featureRoutes, { prefix: '/api/v1/features' });
 
   return app;
 }
