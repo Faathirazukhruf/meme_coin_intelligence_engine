@@ -37,8 +37,8 @@ export interface IngestedTokenMetadata {
   symbol: string;
   name: string;
   decimals: number;
-  creatorAddress?: string;
-  uri?: string;
+  creatorAddress?: string | null;
+  uri?: string | null;
 }
 
 export interface IngestedMarketOverview {

@@ -201,6 +201,12 @@ importers:
       '@meme-coin/config':
         specifier: workspace:*
         version: link:../config
+      '@meme-coin/database':
+        specifier: workspace:*
+        version: link:../database
+      '@meme-coin/providers':
+        specifier: workspace:*
+        version: link:../providers
       '@meme-coin/types':
         specifier: workspace:*
         version: link:../types
