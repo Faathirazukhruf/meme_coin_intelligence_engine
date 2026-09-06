@@ -204,6 +204,9 @@ importers:
       '@meme-coin/database':
         specifier: workspace:*
         version: link:../database
+      '@meme-coin/math':
+        specifier: workspace:*
+        version: link:../math
       '@meme-coin/providers':
         specifier: workspace:*
         version: link:../providers

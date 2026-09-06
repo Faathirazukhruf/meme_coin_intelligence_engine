@@ -12,6 +12,7 @@
     "@aws-sdk/client-s3": "^3.750.0",
     "@meme-coin/config": "workspace:*",
     "@meme-coin/database": "workspace:*",
+    "@meme-coin/math": "workspace:*",
     "@meme-coin/providers": "workspace:*",
     "@meme-coin/types": "workspace:*",
     "@meme-coin/utils": "workspace:*"
