@@ -43,3 +43,8 @@ export * from './social/social-velocity-calculator.js';
 export * from './narrative/narrative-cluster-engine.js';
 export * from './narrative/narrative-momentum-calculator.js';
 export * from './narrative/narrative-summarizer.js';
+
+// Historical Optimization & Evidence Tuning
+export * from './optimization/information-coefficient-analyzer.js';
+export * from './optimization/weight-optimizer.js';
+export * from './optimization/drift-detector.js';
