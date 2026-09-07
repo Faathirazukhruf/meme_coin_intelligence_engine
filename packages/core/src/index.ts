@@ -31,3 +31,8 @@ export * from './execution/slippage-model.js';
 export * from './execution/position-sizer.js';
 export * from './execution/execution-simulator.js';
 export * from './execution/paper-portfolio-manager.js';
+
+// Backtesting Framework
+export * from './backtest/backtest-metrics-calculator.js';
+export * from './backtest/backtest-engine.js';
+export * from './backtest/parameter-sweep-engine.js';

@@ -14,6 +14,7 @@ import { scoreRoutes } from './routes/api/v1/scores.js';
 import { alertsRoutes } from './routes/api/v1/alerts.js';
 import { outcomeRoutes } from './routes/api/v1/outcomes.js';
 import { paperTradingRoutes } from './routes/api/v1/paper-trading.js';
+import { backtestRoutes } from './routes/api/v1/backtest.js';
 
 export async function buildServer(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -65,6 +66,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(alertsRoutes, { prefix: '/api/v1/alerts' });
   await app.register(outcomeRoutes, { prefix: '/api/v1/outcomes' });
   await app.register(paperTradingRoutes, { prefix: '/api/v1/paper-trading' });
+  await app.register(backtestRoutes, { prefix: '/api/v1/backtest' });
 
   return app;
 }
