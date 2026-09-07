@@ -7,6 +7,7 @@ import { ScoringJob } from './jobs/scoring-job.js';
 import { SignalJob } from './jobs/signal-job.js';
 import { OutcomeJob } from './jobs/outcome-job.js';
 import { PaperTradeJob } from './jobs/paper-trade-job.js';
+import { NarrativeJob } from './jobs/narrative-job.js';
 
 const logger = createLogger('worker-runner');
 
@@ -19,6 +20,7 @@ export class WorkerRunner {
   private signalJob: SignalJob;
   private outcomeJob: OutcomeJob;
   private paperTradeJob: PaperTradeJob;
+  private narrativeJob: NarrativeJob;
   private isShuttingDown = false;
 
   constructor() {
@@ -30,6 +32,7 @@ export class WorkerRunner {
     this.signalJob = new SignalJob();
     this.outcomeJob = new OutcomeJob();
     this.paperTradeJob = new PaperTradeJob();
+    this.narrativeJob = new NarrativeJob();
   }
 
   async start(): Promise<void> {
@@ -42,6 +45,7 @@ export class WorkerRunner {
     this.signalJob.start();
     this.outcomeJob.start();
     this.paperTradeJob.start();
+    this.narrativeJob.start();
 
     // Register lifecycle signals for graceful shutdown
     process.on('SIGTERM', () => this.shutdown('SIGTERM'));
@@ -55,6 +59,7 @@ export class WorkerRunner {
     this.isShuttingDown = true;
     logger.info({ signal }, 'Shutting down worker runner gracefully...');
 
+    this.narrativeJob.stop();
     this.paperTradeJob.stop();
     this.outcomeJob.stop();
     this.signalJob.stop();

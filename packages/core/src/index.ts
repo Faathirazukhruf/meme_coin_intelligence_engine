@@ -36,3 +36,10 @@ export * from './execution/paper-portfolio-manager.js';
 export * from './backtest/backtest-metrics-calculator.js';
 export * from './backtest/backtest-engine.js';
 export * from './backtest/parameter-sweep-engine.js';
+
+// Social & Narrative Intelligence
+export * from './social/social-event-ingester.js';
+export * from './social/social-velocity-calculator.js';
+export * from './narrative/narrative-cluster-engine.js';
+export * from './narrative/narrative-momentum-calculator.js';
+export * from './narrative/narrative-summarizer.js';
