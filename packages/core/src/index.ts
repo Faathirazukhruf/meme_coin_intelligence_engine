@@ -16,3 +16,8 @@ export * from './scoring/opportunity-engine.js';
 export * from './scoring/confidence-engine.js';
 export * from './scoring/decision-engine.js';
 export * from './scoring/scoring-orchestrator.js';
+
+// Signals & Alerting Engine
+export * from './signals/signal-filter-engine.js';
+export * from './signals/alert-dispatcher.js';
+export * from './signals/signal-lifecycle-service.js';

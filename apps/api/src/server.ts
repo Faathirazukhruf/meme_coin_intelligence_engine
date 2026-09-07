@@ -11,6 +11,7 @@ import { signalRoutes } from './routes/api/v1/signals.js';
 import { snapshotRoutes } from './routes/api/v1/snapshots.js';
 import { featureRoutes } from './routes/api/v1/features.js';
 import { scoreRoutes } from './routes/api/v1/scores.js';
+import { alertsRoutes } from './routes/api/v1/alerts.js';
 
 export async function buildServer(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -59,6 +60,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(snapshotRoutes, { prefix: '/api/v1/snapshots' });
   await app.register(featureRoutes, { prefix: '/api/v1/features' });
   await app.register(scoreRoutes, { prefix: '/api/v1/scores' });
+  await app.register(alertsRoutes, { prefix: '/api/v1/alerts' });
 
   return app;
 }
